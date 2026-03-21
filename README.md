@@ -1,4 +1,7 @@
 # SplatReady
+<img width="340" height="649" alt="image" src="https://github.com/user-attachments/assets/07b1e922-d345-4065-982f-d8f203118b54" />
+
+https://www.youtube.com/watch?v=5uP29nmTIus
 
 **Convert video to COLMAP datasets ready for Gaussian splat training** — a plugin for [LichtFeld Studio](https://lichtfeld.studio).
 
