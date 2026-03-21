@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+Scripts/
+Lib/
+pyvenv.cfg
+uv.lock
+.lock
+.deps_installed
+CACHEDIR.TAG
+settings.json
+pipeline_config.json
+_run_config.json
+_run_output.txt
+_progress.txt
+_test_config.json
