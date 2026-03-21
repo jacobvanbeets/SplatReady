@@ -7,7 +7,7 @@ https://www.youtube.com/watch?v=5uP29nmTIus
 
 SplatReady automates the full pipeline from drone/camera video to a training-ready dataset:
 
-1. **Frame Extraction** — Extract frames from video files using FFmpeg, with automatic GPS embedding from DJI SRT files
+1. **Frame Extraction** — Extract frames from video files using FFmpeg, with automatic GPS embedding from SRT files
 2. **3D Reconstruction** — Align images and produce a COLMAP-compatible dataset using your choice of reconstruction tool
 3. **Import** — One-click import into LichtFeld Studio to start training
 
