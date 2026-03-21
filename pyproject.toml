@@ -7,6 +7,7 @@ author = "Jacob van Beets"
 dependencies = [
     "Pillow",
     "piexif",
+    "av",
 ]
 
 [tool.lichtfeld]

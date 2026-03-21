@@ -1,10 +1,12 @@
-"""Stage 1: Extract frames from video files with optional GPS embedding."""
+"""Stage 1: Extract frames from video files with optional GPS embedding.
 
-import subprocess
-import sys
+Uses PyAV (av package) for video decoding — no external ffmpeg install required.
+"""
+
 from pathlib import Path
 
-_SUBPROCESS_FLAGS = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+import av
+from PIL import Image
 
 from .srt_parser import SRTParser
 from .gps_embedder import GPSEmbedder
@@ -24,10 +26,6 @@ def extract_frames(video_path, base_output, frame_rate, log):
 
     Returns:
         Path to the output frames directory.
-
-    Raises:
-        FileNotFoundError: If input path does not exist or no videos found.
-        RuntimeError: If all ffmpeg extractions fail.
     """
     input_path = Path(video_path)
     base_output = Path(base_output)
@@ -35,7 +33,6 @@ def extract_frames(video_path, base_output, frame_rate, log):
     if not input_path.exists():
         raise FileNotFoundError(f"Input path not found: {input_path}")
 
-    # Determine if input is a file or folder
     if input_path.is_file():
         video_files = [input_path]
         output_folder_name = input_path.stem
@@ -54,14 +51,12 @@ def extract_frames(video_path, base_output, frame_rate, log):
         for vf in video_files:
             log(f"  - {vf.name}")
 
-    # Create output folder
     frames_folder = base_output / "frames"
     video_output_folder = frames_folder / output_folder_name
     video_output_folder.mkdir(parents=True, exist_ok=True)
 
     log(f"Output folder: {video_output_folder}")
 
-    # Process each video
     total_frames = 0
     successful_videos = 0
 
@@ -81,31 +76,20 @@ def extract_frames(video_path, base_output, frame_rate, log):
         else:
             log("  No SRT file - frames will not have GPS data")
 
-        # Extract frames with FFmpeg
-        output_pattern = str(
-            video_output_folder / f"{video_file.stem}_frame_%04d.jpg"
-        )
-
-        cmd = [
-            "ffmpeg",
-            "-y",
-            "-i", str(video_file),
-            "-vf", f"fps={frame_rate}",
-            "-q:v", "2",
-            output_pattern,
-        ]
-
+        # Extract frames using PyAV
         log(f"  Extracting frames at {frame_rate} fps...")
-        result = subprocess.run(
-            cmd, capture_output=True, text=True,
-            creationflags=_SUBPROCESS_FLAGS,
-        )
-
-        if result.returncode != 0:
-            log(f"  FFmpeg error: {result.stderr[:500]}")
+        try:
+            frame_count = _extract_video_frames(
+                str(video_file),
+                str(video_output_folder),
+                video_file.stem,
+                frame_rate,
+            )
+        except Exception as e:
+            log(f"  Error extracting frames: {e}")
             continue
 
-        log("  Frame extraction completed")
+        log(f"  Extracted {frame_count} frames")
         successful_videos += 1
 
         # Embed GPS data
@@ -122,14 +106,44 @@ def extract_frames(video_path, base_output, frame_rate, log):
 
             log(f"  Processed {len(extracted_frames)} frames with GPS data")
         else:
-            log(f"  Extracted {len(extracted_frames)} frames (no GPS)")
+            log(f"  {frame_count} frames (no GPS)")
 
-        total_frames += len(extracted_frames)
+        total_frames += frame_count
 
     if successful_videos == 0:
-        raise RuntimeError("All video extractions failed. Is ffmpeg installed and on PATH?")
+        raise RuntimeError("All video extractions failed.")
 
     log(f"\nFrame extraction complete: {total_frames} total frames from {successful_videos} video(s)")
     log(f"Output: {video_output_folder}")
 
     return str(video_output_folder)
+
+
+def _extract_video_frames(video_path, output_dir, stem, target_fps):
+    """Extract frames from a single video at the target FPS using PyAV.
+
+    Returns the number of frames extracted.
+    """
+    container = av.open(video_path)
+    stream = container.streams.video[0]
+
+    # Get video FPS
+    video_fps = float(stream.average_rate or stream.guessed_rate or 30)
+    # Calculate how many source frames to skip between captures
+    frame_interval = max(1, round(video_fps / target_fps))
+
+    output_path = Path(output_dir)
+    frame_number = 0
+    saved_count = 0
+
+    for frame in container.decode(video=0):
+        if frame_number % frame_interval == 0:
+            saved_count += 1
+            img = frame.to_image()  # PIL Image
+            filename = f"{stem}_frame_{saved_count:04d}.jpg"
+            img.save(str(output_path / filename), quality=95)
+
+        frame_number += 1
+
+    container.close()
+    return saved_count

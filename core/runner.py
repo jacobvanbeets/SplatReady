@@ -14,8 +14,6 @@ from pathlib import Path
 # Add parent so we can import sibling modules
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from core.srt_parser import SRTParser
-from core.gps_embedder import GPSEmbedder
 from core.frame_extractor import extract_frames
 from core.colmap_processor import process_colmap
 from core.metashape_processor import process_metashape
