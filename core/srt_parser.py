@@ -47,13 +47,13 @@ class SRTParser:
                 frame_data["longitude"] = float(gps_match.group(1))
                 frame_data["latitude"] = float(gps_match.group(2))
 
-            # Fallback: [latitude: ...] [longtitude: ...] format
+            # Fallback: [latitude: ...] [longitude: ...] format
             if frame_data["latitude"] is None:
                 lat_match = re.search(
                     r"\[latitude:\s*([-\d.]+)\]", metadata_text, re.IGNORECASE
                 )
                 lon_match = re.search(
-                    r"\[longtitude:\s*([-\d.]+)\]", metadata_text, re.IGNORECASE
+                    r"\[longitude:\s*([-\d.]+)\]", metadata_text, re.IGNORECASE
                 )
                 if lat_match:
                     frame_data["latitude"] = float(lat_match.group(1))
