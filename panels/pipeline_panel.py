@@ -42,6 +42,7 @@ class SplatReadyPanel(lf.ui.Panel):
 
     def __init__(self):
         self._cfg = load_config()
+        self._ver = 0  # Bumped on every _set() to force widget refresh
 
         # External process state (no threads!)
         self._process = None
@@ -62,6 +63,7 @@ class SplatReadyPanel(lf.ui.Panel):
 
     def _set(self, key, value):
         self._cfg[key] = value
+        self._ver += 1
         save_config(self._cfg)
 
     def _method_idx(self):
@@ -182,6 +184,14 @@ class SplatReadyPanel(lf.ui.Panel):
     # UI
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _path_label(ui, path, placeholder="No selection"):
+        """Draw a path as styled text."""
+        if path:
+            ui.text_colored(path, (1.0, 0.6, 0.2, 1.0))
+        else:
+            ui.text_disabled(placeholder)
+
     def draw(self, ui):
         self._poll_process()
         scale = ui.get_dpi_scale()
@@ -197,12 +207,6 @@ class SplatReadyPanel(lf.ui.Panel):
 
             if not self._cfg.get("skip_extraction"):
                 ui.label("Video File/Folder:")
-                changed, val = ui.input_text(
-                    "##video_path", self._get("video_path")
-                )
-                if changed:
-                    self._set("video_path", val)
-                ui.same_line()
                 if ui.button("File##browse_video_file", (50 * scale, 0)):
                     path = lf.ui.open_video_file_dialog()
                     if path:
@@ -212,20 +216,16 @@ class SplatReadyPanel(lf.ui.Panel):
                     path = lf.ui.open_folder_dialog(title="Select Video Folder")
                     if path:
                         self._set("video_path", path)
+                self._path_label(ui, self._get("video_path"), "No file selected")
 
                 ui.label("Base Output Folder:")
-                changed, val = ui.input_text(
-                    "##base_output", self._get("base_output_folder")
-                )
-                if changed:
-                    self._set("base_output_folder", val)
-                ui.same_line()
                 if ui.button("Browse##browse_output", (60 * scale, 0)):
                     path = lf.ui.open_folder_dialog(
                         title="Select Base Output Folder"
                     )
                     if path:
                         self._set("base_output_folder", path)
+                self._path_label(ui, self._get("base_output_folder"), "No folder selected")
 
                 ui.text_disabled("Output: [Base]/frames/[VideoName]")
 
@@ -240,32 +240,22 @@ class SplatReadyPanel(lf.ui.Panel):
                     self._set("frame_rate", max(0.1, val))
             else:
                 ui.label("Manual Frames Folder:")
-                changed, val = ui.input_text(
-                    "##manual_frames", self._get("manual_frames_folder")
-                )
-                if changed:
-                    self._set("manual_frames_folder", val)
-                ui.same_line()
                 if ui.button("Browse##browse_manual_frames", (60 * scale, 0)):
                     path = lf.ui.open_folder_dialog(
                         title="Select Frames Folder"
                     )
                     if path:
                         self._set("manual_frames_folder", path)
+                self._path_label(ui, self._get("manual_frames_folder"), "No folder selected")
 
                 ui.label("Base Output Folder:")
-                changed, val = ui.input_text(
-                    "##base_output_skip", self._get("base_output_folder")
-                )
-                if changed:
-                    self._set("base_output_folder", val)
-                ui.same_line()
                 if ui.button("Browse##browse_output_skip", (60 * scale, 0)):
                     path = lf.ui.open_folder_dialog(
                         title="Select Base Output Folder"
                     )
                     if path:
                         self._set("base_output_folder", path)
+                self._path_label(ui, self._get("base_output_folder"), "No folder selected")
 
         ui.separator()
 
@@ -296,43 +286,27 @@ class SplatReadyPanel(lf.ui.Panel):
 
                 if method == "colmap":
                     ui.label("COLMAP Executable:")
-                    changed, val = ui.input_text(
-                        "##colmap_exe", self._get("colmap_exe_path")
-                    )
-                    if changed:
-                        self._set("colmap_exe_path", val)
-                    ui.same_line()
                     if ui.button("Browse##browse_colmap", (60 * scale, 0)):
                         path = self._browse_exe("Select COLMAP Executable")
                         if path:
                             self._set("colmap_exe_path", path)
+                    self._path_label(ui, self._get("colmap_exe_path"))
 
                 elif method == "metashape":
                     ui.label("Metashape Executable:")
-                    changed, val = ui.input_text(
-                        "##metashape_exe", self._get("metashape_exe_path")
-                    )
-                    if changed:
-                        self._set("metashape_exe_path", val)
-                    ui.same_line()
                     if ui.button("Browse##browse_metashape", (60 * scale, 0)):
                         path = self._browse_exe("Select Metashape Executable")
                         if path:
                             self._set("metashape_exe_path", path)
+                    self._path_label(ui, self._get("metashape_exe_path"))
 
                 elif method == "realityscan":
                     ui.label("RealityScan Executable:")
-                    changed, val = ui.input_text(
-                        "##realityscan_exe",
-                        self._get("realityscan_exe_path"),
-                    )
-                    if changed:
-                        self._set("realityscan_exe_path", val)
-                    ui.same_line()
                     if ui.button("Browse##browse_realityscan", (60 * scale, 0)):
                         path = self._browse_exe("Select RealityScan Executable")
                         if path:
                             self._set("realityscan_exe_path", path)
+                    self._path_label(ui, self._get("realityscan_exe_path"))
 
                 ui.text_disabled("Input: [Base]/frames/[VideoName]")
                 ui.text_disabled("Output: [Base]/colmap/undistorted")
