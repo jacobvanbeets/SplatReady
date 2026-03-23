@@ -1,5 +1,5 @@
 # SplatReady
-<img width="340" height="649" alt="image" src="https://github.com/user-attachments/assets/07b1e922-d345-4065-982f-d8f203118b54" />
+<img width="534" height="575" alt="image" src="https://github.com/user-attachments/assets/aa096640-7b7f-4187-bf30-4b50cf1b810e" />
 
 https://www.youtube.com/watch?v=5uP29nmTIus
 
