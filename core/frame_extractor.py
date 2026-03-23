@@ -118,34 +118,67 @@ def extract_frames(video_path, base_output, frame_rate, log):
 def _extract_video_frames(video_path, output_dir, stem, target_fps):
     """Extract frames from a single video at the target FPS using PyAV.
 
+    Single-pass time-based extraction using actual frame PTS timestamps.
+    Handles both CFR and VFR videos correctly by keeping each candidate
+    frame in memory and saving it only when the next frame proves it was
+    the closest to the target time.
+
     Returns (list of saved file paths, list of timestamps in seconds).
     """
     container = av.open(video_path)
     stream = container.streams.video[0]
 
-    # Get video FPS
+    # Get video duration
+    if container.duration and container.duration > 0:
+        duration = float(container.duration) / av.time_base
+    else:
+        duration = 0.0
+
+    # Count total frames
+    total_frames = stream.frames
+    if not total_frames or total_frames <= 0:
+        # Fallback: count by decoding
+        total_frames = 0
+        for frame in container.decode(video=0):
+            total_frames += 1
+        container.close()
+        container = av.open(video_path)
+        stream = container.streams.video[0]
+
+    # Calculate which frame indices to extract
     video_fps = float(stream.average_rate or stream.guessed_rate or 30)
-    # Calculate how many source frames to skip between captures
-    frame_interval = max(1, round(video_fps / target_fps))
+    frame_step = video_fps / target_fps
+    # Build exact list: pick frame at floor(i * step) for i in 0..N-1
+    # This guarantees the count matches what target_fps implies
+    duration = total_frames / video_fps
+    desired_count = max(1, round(duration * target_fps))
+    target_indices = set(
+        int(i * frame_step) for i in range(desired_count)
+        if int(i * frame_step) < total_frames
+    )
 
     output_path = Path(output_dir)
-    frame_number = 0
-    saved_count = 0
     saved_paths = []
     saved_timestamps = []
+    saved_count = 0
+    frame_idx = 0
 
     for frame in container.decode(video=0):
-        if frame_number % frame_interval == 0:
+        if frame_idx in target_indices:
+            # Get actual timestamp for GPS
+            if frame.pts is not None:
+                frame_time = float(frame.pts * stream.time_base)
+            else:
+                frame_time = frame_idx / video_fps
+
             saved_count += 1
-            img = frame.to_image()  # PIL Image
             filename = f"{stem}_frame_{saved_count:04d}.jpg"
             filepath = output_path / filename
-            img.save(str(filepath), quality=95)
+            frame.to_image().save(str(filepath), quality=95)
             saved_paths.append(str(filepath))
-            # Use actual video timestamp for GPS matching
-            saved_timestamps.append(frame_number / video_fps)
+            saved_timestamps.append(frame_time)
 
-        frame_number += 1
+        frame_idx += 1
 
     container.close()
     return saved_paths, saved_timestamps
