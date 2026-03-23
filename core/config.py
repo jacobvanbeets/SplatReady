@@ -9,7 +9,9 @@ DEFAULTS = {
     # Stage 1
     "video_path": "",
     "base_output_folder": "",
+    "extraction_mode": 0,  # 0 = FPS, 1 = Frame Count
     "frame_rate": 1.0,
+    "desired_frames": 100,
     "skip_extraction": False,
     "manual_frames_folder": "",
     # Stage 2

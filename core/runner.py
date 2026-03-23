@@ -66,7 +66,13 @@ def main():
             if not video_path:
                 raise ValueError("Video file/folder is required")
 
-            frame_rate = float(cfg.get("frame_rate", 1.0))
+            extraction_mode = int(cfg.get("extraction_mode", 0))
+            if extraction_mode == 1:
+                # Frame Count mode: calculate FPS from video duration
+                desired_frames = int(cfg.get("desired_frames", 100))
+                frame_rate = _calc_fps_for_frame_count(video_path, desired_frames, log)
+            else:
+                frame_rate = float(cfg.get("frame_rate", 1.0))
             images_dir = extract_frames(video_path, base_output, frame_rate, log)
             set_progress(40, "Frame extraction complete")
         else:
@@ -133,6 +139,27 @@ def main():
     except Exception as e:
         log(f"\nERROR: {str(e)}")
         sys.exit(1)
+
+
+def _calc_fps_for_frame_count(video_path, desired_frames, log):
+    """Calculate the FPS needed to extract a target number of frames."""
+    import av
+
+    try:
+        container = av.open(video_path)
+        duration = float(container.duration) / av.time_base  # seconds
+        container.close()
+
+        if duration <= 0:
+            log(f"  Could not determine video duration, using 1 fps")
+            return 1.0
+
+        fps = desired_frames / duration
+        log(f"  Video duration: {duration:.1f}s, extracting {desired_frames} frames at {fps:.3f} fps")
+        return max(0.01, fps)
+    except Exception as e:
+        log(f"  Error reading video duration: {e}, using 1 fps")
+        return 1.0
 
 
 if __name__ == "__main__":

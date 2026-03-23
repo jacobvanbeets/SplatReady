@@ -229,15 +229,39 @@ class SplatReadyPanel(lf.ui.Panel):
 
                 ui.text_disabled("Output: [Base]/frames/[VideoName]")
 
-                changed, val = ui.input_float(
-                    "Frame Rate (fps)##fps",
-                    float(self._cfg.get("frame_rate", 1.0)),
-                    step=0.1,
-                    step_fast=1.0,
-                    format="%.1f",
+                # Extraction mode: FPS or Frame Count
+                ui.label("Extraction Mode:")
+                mode_labels = ["FPS-based", "Frame Count"]
+                changed, new_mode = ui.combo(
+                    "##extraction_mode",
+                    int(self._cfg.get("extraction_mode", 0)),
+                    mode_labels,
                 )
                 if changed:
-                    self._set("frame_rate", max(0.1, val))
+                    self._set("extraction_mode", new_mode)
+
+                if int(self._cfg.get("extraction_mode", 0)) == 0:
+                    changed, val = ui.input_float(
+                        "Frame Rate (fps)##fps",
+                        float(self._cfg.get("frame_rate", 1.0)),
+                        step=0.1,
+                        step_fast=1.0,
+                        format="%.1f",
+                    )
+                    if changed:
+                        self._set("frame_rate", max(0.1, val))
+                else:
+                    changed, val = ui.input_int(
+                        "Desired Frames##desired_frames",
+                        int(self._cfg.get("desired_frames", 100)),
+                        step=10,
+                        step_fast=50,
+                    )
+                    if changed:
+                        self._set("desired_frames", max(1, val))
+                    ui.text_disabled(
+                        "FPS will be calculated from video duration."
+                    )
             else:
                 ui.label("Manual Frames Folder:")
                 if ui.button("Browse##browse_manual_frames", (60 * scale, 0)):

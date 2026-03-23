@@ -79,7 +79,7 @@ def extract_frames(video_path, base_output, frame_rate, log):
         # Extract frames using PyAV
         log(f"  Extracting frames at {frame_rate} fps...")
         try:
-            frame_count = _extract_video_frames(
+            frame_paths, frame_timestamps = _extract_video_frames(
                 str(video_file),
                 str(video_output_folder),
                 video_file.stem,
@@ -89,26 +89,22 @@ def extract_frames(video_path, base_output, frame_rate, log):
             log(f"  Error extracting frames: {e}")
             continue
 
-        log(f"  Extracted {frame_count} frames")
+        log(f"  Extracted {len(frame_paths)} frames")
         successful_videos += 1
 
-        # Embed GPS data
-        extracted_frames = sorted(
-            video_output_folder.glob(f"{video_file.stem}_frame_*.jpg")
-        )
+        # Embed GPS data using actual frame timestamps
         if frames_data:
             log("  Embedding GPS data into frames...")
-            for idx, frame_path in enumerate(extracted_frames):
-                timestamp = idx / frame_rate
+            for frame_path, timestamp in zip(frame_paths, frame_timestamps):
                 gps_data = SRTParser.get_gps_for_timestamp(frames_data, timestamp)
                 if gps_data:
                     GPSEmbedder.embed_gps(str(frame_path), gps_data)
 
-            log(f"  Processed {len(extracted_frames)} frames with GPS data")
+            log(f"  Processed {len(frame_paths)} frames with GPS data")
         else:
-            log(f"  {frame_count} frames (no GPS)")
+            log(f"  {len(frame_paths)} frames (no GPS)")
 
-        total_frames += frame_count
+        total_frames += len(frame_paths)
 
     if successful_videos == 0:
         raise RuntimeError("All video extractions failed.")
@@ -122,7 +118,7 @@ def extract_frames(video_path, base_output, frame_rate, log):
 def _extract_video_frames(video_path, output_dir, stem, target_fps):
     """Extract frames from a single video at the target FPS using PyAV.
 
-    Returns the number of frames extracted.
+    Returns (list of saved file paths, list of timestamps in seconds).
     """
     container = av.open(video_path)
     stream = container.streams.video[0]
@@ -135,15 +131,21 @@ def _extract_video_frames(video_path, output_dir, stem, target_fps):
     output_path = Path(output_dir)
     frame_number = 0
     saved_count = 0
+    saved_paths = []
+    saved_timestamps = []
 
     for frame in container.decode(video=0):
         if frame_number % frame_interval == 0:
             saved_count += 1
             img = frame.to_image()  # PIL Image
             filename = f"{stem}_frame_{saved_count:04d}.jpg"
-            img.save(str(output_path / filename), quality=95)
+            filepath = output_path / filename
+            img.save(str(filepath), quality=95)
+            saved_paths.append(str(filepath))
+            # Use actual video timestamp for GPS matching
+            saved_timestamps.append(frame_number / video_fps)
 
         frame_number += 1
 
     container.close()
-    return saved_count
+    return saved_paths, saved_timestamps
