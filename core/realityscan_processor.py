@@ -1,5 +1,6 @@
 """Stage 2: RealityScan reconstruction pipeline."""
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -115,11 +116,35 @@ def process_realityscan(images_dir, base_output, realityscan_exe, log):
         else:
             log("Warning: No undistorted images were exported")
 
-        log(f"Created empty points3D.txt (RealityScan sparse export skipped)")
-        log(f"\nOutput directory: {undistorted_output_dir}")
-        log("\nNote: RealityScan exports need manual verification")
-        log("  - Check that registration.txt contains camera data")
-        log("  - Verify undistorted images were exported correctly")
+        # Fix folder structure for RealityScan 2.1+
+        # RS 2.1 creates nested: sparse/0/sparse/0/{cameras.txt,images.txt,points3D.txt}
+        # We need them in: sparse/0/
+        log("Fixing folder structure...")
+        sparse_dir = undistorted_output_dir / "sparse"
+        for txt_name in ("cameras.txt", "images.txt", "points3D.txt"):
+            target = sparse_0_dir / txt_name
+            if target.exists():
+                # Check it's not our empty fallback (for points3D.txt)
+                if txt_name != "points3D.txt" or target.stat().st_size > 200:
+                    continue
+            # Search recursively under sparse/ for the real file
+            found = list(sparse_dir.rglob(txt_name))
+            for f in found:
+                if f.parent != sparse_0_dir and f.stat().st_size > 0:
+                    shutil.copy2(str(f), str(target))
+                    log(f"  Copied {txt_name} from {f.parent}")
+                    break
+
+        # Clean up nested dirs inside sparse/0/ (images/, sparse/ created by RS 2.1)
+        for item in sparse_0_dir.iterdir():
+            if item.is_dir():
+                shutil.rmtree(str(item), ignore_errors=True)
+                log(f"  Removed nested dir: sparse/0/{item.name}")
+
+        # Verify final structure
+        for txt_name in ("cameras.txt", "images.txt", "points3D.txt"):
+            status = "OK" if (sparse_0_dir / txt_name).exists() else "MISSING"
+            log(f"  {status}: sparse/0/{txt_name}")
 
     except Exception as e:
         log(f"RealityScan error: {str(e)}")
