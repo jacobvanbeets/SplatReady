@@ -135,11 +135,19 @@ def process_realityscan(images_dir, base_output, realityscan_exe, log):
                     log(f"  Copied {txt_name} from {f.parent}")
                     break
 
-        # Clean up nested dirs inside sparse/0/ (images/, sparse/ created by RS 2.1)
+        # Clean up sparse/0/ - remove nested dirs and stray image files
+        # RS 2.0 dumps .jpg files in sparse/0/, RS 2.1 creates nested dirs
         for item in sparse_0_dir.iterdir():
             if item.is_dir():
                 shutil.rmtree(str(item), ignore_errors=True)
                 log(f"  Removed nested dir: sparse/0/{item.name}")
+            elif item.is_file() and item.suffix.lower() not in (".txt",):
+                item.unlink()
+        # Also remove registration.txt and imagelist.lst - not needed by LFS
+        for extra in ("registration.txt", "imagelist.lst"):
+            extra_path = sparse_0_dir / extra
+            if extra_path.exists():
+                extra_path.unlink()
 
         # Verify final structure
         for txt_name in ("cameras.txt", "images.txt", "points3D.txt"):
