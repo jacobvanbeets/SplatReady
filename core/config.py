@@ -23,6 +23,7 @@ DEFAULTS = {
     "max_image_size": 2000,
     "min_scale": 0.5,
     "skip_reconstruction": False,
+    "normalize_zero_based_ids": False,
 }
 
 

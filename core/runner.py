@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.frame_extractor import extract_frames
 from core.colmap_processor import process_colmap
+from core.colmap_id_normalizer import normalize_colmap_ids
 from core.metashape_processor import process_metashape
 from core.realityscan_processor import process_realityscan
 
@@ -131,6 +132,10 @@ def main():
             undistorted_path = str(Path(base_output) / "colmap" / "undistorted")
 
         # ---- Done ----
+        if undistorted_path and cfg.get("normalize_zero_based_ids", False):
+            set_progress(98, "Normalizing COLMAP IDs...")
+            log("Normalizing zero-based COLMAP camera/image IDs...")
+            normalize_colmap_ids(undistorted_path, log)
         if undistorted_path:
             set_progress(100, f"RESULT:{undistorted_path}")
         else:

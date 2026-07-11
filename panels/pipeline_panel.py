@@ -362,6 +362,17 @@ class SplatReadyPanel(lf.ui.Panel):
                     if changed:
                         self._set("min_scale", val)
 
+                ui.spacing()
+                changed, val = ui.checkbox(
+                    "Normalize zero-based COLMAP IDs##normalize_ids",
+                    self._cfg.get("normalize_zero_based_ids", False),
+                )
+                if changed:
+                    self._set("normalize_zero_based_ids", val)
+                ui.text_disabled(
+                    "Remaps camera/image IDs to non-zero values (and updates references)."
+                )
+
         ui.separator()
 
         # ===== Run Pipeline =====
